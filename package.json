@@ -1,0 +1,15 @@
+{
+  "name": "arogya-setu-backend",
+  "version": "2.0.0",
+  "description": "Arogya-Setu Healthcare API — Node.js + Express + PostgreSQL",
+  "main": "server.js",
+  "scripts": {
+    "start":   "node server.js",
+    "dev":     "node --watch server.js",
+    "seed":    "node seed.js",
+    "setup":   "node setupDb.js"
+  },
+  "keywords": ["healthcare", "arogya-setu", "nodejs", "postgresql"],
+  "author": "Arogya-Setu Team",
+  "license": "ISC"
+}

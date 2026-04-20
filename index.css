@@ -1,0 +1,150 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #0a0a0b;
+  --foreground: #ffffff;
+  --primary: #2dd4bf;
+  --primary-glow: rgba(45, 212, 191, 0.4);
+  --secondary: #6366f1;
+  --accent: #f43f5e;
+}
+
+@layer base {
+  * {
+    @apply border-white/5;
+    box-sizing: border-box;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', sans-serif;
+  }
+}
+
+@layer components {
+  /* Premium Glass Cards */
+  .glass-card {
+    @apply bg-white/[0.03] backdrop-blur-2xl border border-white/5 rounded-3xl transition-all duration-500;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.02);
+  }
+  
+  .glass-card-hover {
+    @apply glass-card hover:bg-white/[0.06] hover:border-primary-400/30 hover:shadow-primary-400/5 hover:translate-y-[-4px];
+  }
+
+  /* Bento Grid Utility */
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+
+  /* Premium Buttons */
+  .btn-primary {
+    @apply relative overflow-hidden bg-primary-400 text-dark-900 font-bold px-8 py-4 rounded-2xl transition-all duration-300 hover:shadow-[0_0_20px_rgba(45,212,191,0.5)] hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2;
+  }
+
+  .btn-secondary {
+    @apply bg-white/5 backdrop-blur-md border border-white/10 text-white font-semibold px-8 py-4 rounded-2xl transition-all duration-300 hover:bg-white/10 hover:border-white/20 active:scale-[0.98] flex items-center justify-center gap-2;
+  }
+
+  .btn-aura {
+    @apply relative bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold px-8 py-4 rounded-2xl shadow-xl shadow-indigo-500/20 hover:shadow-indigo-500/40 transition-all duration-300 hover:scale-[1.02] flex items-center justify-center gap-2;
+  }
+
+  .input-field {
+    @apply w-full bg-white/[0.02] border border-white/10 rounded-2xl px-6 py-4 text-white placeholder-white/20 focus:outline-none focus:border-primary-400/50 focus:ring-4 focus:ring-primary-400/10 transition-all duration-300;
+  }
+
+  /* Typography */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-400 to-blue-400 bg-clip-text text-transparent;
+  }
+  
+  .text-gradient-aura {
+    @apply bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent animate-gradient-x;
+  }
+}
+
+@layer utilities {
+  .medical-grid {
+    background-image: 
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .glow-mesh {
+    background: 
+      radial-gradient(circle at 0% 0%, rgba(45, 212, 191, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 100% 100%, rgba(99, 102, 241, 0.1) 0%, transparent 50%);
+  }
+
+  .animate-glow {
+    animation: glow 4s ease-in-out infinite alternate;
+  }
+
+  @keyframes glow {
+    from { box-shadow: 0 0 10px -5px var(--primary-glow); }
+    to { box-shadow: 0 0 20px 5px var(--primary-glow); }
+  }
+
+  .animate-gradient-x {
+    background-size: 200% 200%;
+    animation: gradient-x 15s ease infinite;
+  }
+
+  @keyframes gradient-x {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  border: 2px solid var(--background);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* 🌿 Rural Mode: Ultra-Accessible Premium */
+.rural-theme {
+  --primary: #fbbf24; /* Accessible Gold */
+  font-size: 1.2rem;
+}
+
+.rural-theme .glass-card {
+  @apply bg-white/5 border-2 border-white/20 rounded-[3rem] shadow-[0_0_50px_rgba(0,0,0,0.8)];
+}
+
+.rural-theme h1 {
+  @apply text-6xl leading-[1.1] font-black tracking-tight;
+}
+
+.rural-theme .btn-primary {
+  @apply py-8 px-12 rounded-[2.5rem] bg-amber-400 text-dark-900 border-b-8 border-amber-600 active:border-b-0 active:translate-y-2 mb-6;
+}
+
+.rural-theme .icon-large {
+  @apply w-24 h-24 p-6 bg-white/10 rounded-[2rem] text-amber-400 mb-4;
+}

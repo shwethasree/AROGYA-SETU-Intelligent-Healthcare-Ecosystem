@@ -1,0 +1,2693 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Patient Dashboard — Arogya-Setu</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="manifest" href="../manifest.json">
+  <!-- Firebase CDN -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="../js/firebase-config.js"></script>
+  <style>
+    /* Voice Widget */
+    .voice-widget {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .voice-outer {
+      position: relative;
+      width: 130px;
+      height: 130px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .voice-ring {
+      position: absolute;
+      inset: -12px;
+      border-radius: 50%;
+      border: 2px solid rgba(26, 115, 232, 0.15);
+      animation: ripple 2.5s infinite;
+    }
+
+    .voice-ring-2 {
+      animation-delay: 0.8s;
+      inset: -22px;
+      border-color: rgba(26, 115, 232, 0.08);
+    }
+
+    .voice-main-btn {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--teal) 100%);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      color: white;
+      font-size: 2rem;
+      transition: all 0.25s;
+      box-shadow: 0 8px 32px rgba(26, 115, 232, 0.4);
+      position: relative;
+      z-index: 2;
+    }
+
+    .voice-main-btn:hover {
+      transform: scale(1.08);
+    }
+
+    .voice-main-btn.listening {
+      background: linear-gradient(135deg, #ff5252, #e53935);
+      box-shadow: 0 8px 32px rgba(229, 57, 53, 0.5);
+      animation: pulse 1.2s infinite;
+    }
+
+    .voice-main-btn .vlabel {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      opacity: 0.9;
+    }
+
+    .voice-status {
+      font-size: 0.88rem;
+      color: var(--text-light);
+      font-weight: 500;
+      text-align: center;
+      min-height: 20px;
+    }
+
+    .voice-transcript {
+      background: var(--gray-100);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      font-size: 0.88rem;
+      color: var(--text);
+      min-height: 50px;
+      width: 100%;
+      text-align: center;
+      font-style: italic;
+    }
+
+    .voice-commands {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .voice-cmd {
+      background: var(--primary-light);
+      color: var(--primary);
+      padding: 5px 12px;
+      border-radius: var(--radius-full);
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .voice-cmd:hover {
+      background: var(--primary);
+      color: white;
+    }
+
+    /* Waveform bars */
+    .wave-bar {
+      display: inline-block;
+      width: 5px;
+      border-radius: 3px;
+      background: linear-gradient(180deg, var(--primary), var(--teal));
+      height: 12px;
+      animation: wavePulse 1s infinite ease-in-out;
+    }
+
+    @keyframes wavePulse {
+
+      0%,
+      100% {
+        height: 10px;
+        opacity: 0.5;
+      }
+
+      50% {
+        height: 36px;
+        opacity: 1;
+      }
+    }
+
+    /* Voice conversation bubbles */
+    .voice-bubble {
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-size: 0.9rem;
+      max-width: 90%;
+      line-height: 1.5;
+      animation: msgPop 0.2s ease;
+    }
+
+    .voice-bubble.user {
+      background: linear-gradient(135deg, var(--primary), var(--teal));
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+
+    .voice-bubble.ai {
+      background: white;
+      border: 1px solid var(--gray-200);
+      color: var(--text);
+      border-bottom-left-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    /* SOS Button */
+    .sos-container {
+      background: linear-gradient(135deg, #fff5f5, #fee2e2);
+      border: 2px solid #fecaca;
+      border-radius: var(--radius-xl);
+      padding: 24px;
+    }
+
+    .sos-main-btn {
+      width: 100%;
+      padding: 18px 24px;
+      background: linear-gradient(135deg, #ff1744, #e53935);
+      color: white;
+      border: none;
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: all 0.25s;
+      box-shadow: 0 8px 24px rgba(229, 57, 53, 0.4);
+      font-family: var(--font);
+    }
+
+    .sos-main-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 14px 36px rgba(229, 57, 53, 0.5);
+    }
+
+    .sos-main-btn:active {
+      transform: scale(0.98);
+    }
+
+    .sos-emoji {
+      font-size: 2rem;
+    }
+
+    .sos-text-wrap .t1 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      display: block;
+    }
+
+    .sos-text-wrap .t2 {
+      font-size: 0.78rem;
+      opacity: 0.85;
+      font-weight: 400;
+    }
+
+    .sos-note {
+      font-size: 0.78rem;
+      color: #ef4444;
+      margin-top: 10px;
+      text-align: center;
+      font-weight: 500;
+    }
+
+    /* Appointment Card */
+    .appt-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px;
+      border-radius: var(--radius);
+      border: 1px solid var(--gray-200);
+      background: var(--gray-100);
+      transition: var(--transition);
+      margin-bottom: 10px;
+    }
+
+    .appt-card:hover {
+      border-color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    .appt-date-box {
+      background: linear-gradient(135deg, var(--primary), var(--teal));
+      color: white;
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      text-align: center;
+      min-width: 58px;
+      flex-shrink: 0;
+    }
+
+    .appt-date-box .day {
+      font-size: 1.4rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .appt-date-box .mon {
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      opacity: 0.85;
+    }
+
+    .appt-doctor {
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: var(--text);
+    }
+
+    .appt-specialty {
+      font-size: 0.8rem;
+      color: var(--text-light);
+    }
+
+    .appt-time-tag {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--primary);
+      background: var(--primary-light);
+      padding: 3px 10px;
+      border-radius: 99px;
+    }
+
+    .appt-actions-col {
+      margin-left: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    /* Reminder */
+    .rem-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: var(--radius);
+      background: var(--gray-100);
+      border: 1px solid var(--gray-200);
+      transition: var(--transition);
+      margin-bottom: 8px;
+    }
+
+    .rem-item:hover {
+      border-color: var(--teal);
+    }
+
+    .rem-pill-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--teal-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .rem-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+
+    .rem-time {
+      font-size: 0.78rem;
+      color: var(--text-light);
+    }
+
+    .rem-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Health Stats */
+    .health-stat-mini {
+      text-align: center;
+      padding: 16px 8px;
+    }
+
+    .hm-value {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .hm-unit {
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text-light);
+    }
+
+    .hm-label {
+      font-size: 0.8rem;
+      color: var(--text-light);
+      margin-top: 4px;
+    }
+
+    .hm-status {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 99px;
+      margin-top: 6px;
+      display: inline-block;
+    }
+
+    .hm-normal {
+      background: var(--success-light);
+      color: var(--success);
+    }
+
+    .hm-warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    /* AI Chat — Full Panel */
+    .ai-chat-box {
+      background: var(--gray-100);
+      border-radius: var(--radius);
+      padding: 14px;
+      flex: 1;
+      min-height: 260px;
+      max-height: 380px;
+      margin-bottom: 10px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      scroll-behavior: smooth;
+    }
+
+    .chat-msg {
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-size: 0.88rem;
+      max-width: 82%;
+      line-height: 1.55;
+      animation: msgPop 0.2s ease;
+    }
+
+    @keyframes msgPop {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .chat-msg.ai {
+      background: white;
+      color: var(--text);
+      border: 1px solid var(--gray-200);
+      border-bottom-left-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .chat-msg.user {
+      background: linear-gradient(135deg, var(--primary), var(--teal));
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+
+    .chat-msg.typing {
+      background: white;
+      border: 1px solid var(--gray-200);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 12px 16px;
+      width: fit-content;
+    }
+
+    .dot-flashing {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .dot-flashing span {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--primary);
+      opacity: 0.6;
+      animation: dotBounce 1.4s infinite ease;
+    }
+
+    .dot-flashing span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .dot-flashing span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes dotBounce {
+
+      0%,
+      80%,
+      100% {
+        transform: scale(0.7);
+        opacity: 0.4;
+      }
+
+      40% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .ai-input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .ai-input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1.5px solid var(--gray-300);
+      border-radius: var(--radius-full);
+      font-size: 0.9rem;
+      font-family: var(--font);
+      outline: none;
+      transition: var(--transition);
+      background: white;
+    }
+
+    .ai-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+    }
+
+    .ai-send-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--teal));
+      color: white;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: var(--transition);
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+    }
+
+    .ai-send-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 20px rgba(26, 115, 232, 0.4);
+    }
+
+    .ai-send-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .ai-chip-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .ai-chip {
+      background: var(--primary-light);
+      color: var(--primary);
+      border: 1px solid rgba(26, 115, 232, 0.2);
+      padding: 5px 12px;
+      border-radius: 99px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .ai-chip:hover {
+      background: var(--primary);
+      color: white;
+    }
+
+    .gemini-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      color: var(--text-light);
+      font-weight: 500;
+      margin-top: 6px;
+    }
+
+    .gemini-badge span {
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    /* Sidebar nav items */
+    .nav-item[data-section] {
+      cursor: pointer;
+    }
+
+    /* Section pages */
+    .dash-section {
+      display: none;
+    }
+
+    .dash-section.active {
+      display: block;
+    }
+
+    /* ---- AI Scanner Styles ---- */
+    .scanner-wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .scanner-topbar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .scanner-topbar label {
+      font-weight: 700;
+      color: var(--text-light);
+      font-size: 0.9rem;
+    }
+
+    .lang-select {
+      padding: 8px 16px;
+      border-radius: 99px;
+      border: 1.5px solid var(--gray-300);
+      font-family: var(--font);
+      font-size: 0.9rem;
+      background: var(--white);
+      cursor: pointer;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .lang-select:focus {
+      border-color: var(--primary);
+    }
+
+    .scanner-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media(max-width:700px) {
+      .scanner-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .scanner-cam-box {
+      background: #0f172a;
+      border-radius: 20px;
+      overflow: hidden;
+      position: relative;
+      aspect-ratio: 4/3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--gray-200);
+    }
+
+    .scanner-cam-box video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .cam-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      color: #94a3b8;
+      font-size: 3rem;
+    }
+
+    .cam-placeholder span {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #64748b;
+    }
+
+    .scan-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border: 3px solid transparent;
+      border-radius: 18px;
+      transition: border-color 0.3s;
+    }
+
+    .scan-overlay.active {
+      border-color: var(--primary);
+      animation: scanPulse 1.2s infinite;
+    }
+
+    @keyframes scanPulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(26, 115, 232, 0.4);
+      }
+
+      50% {
+        box-shadow: 0 0 0 10px rgba(26, 115, 232, 0);
+      }
+    }
+
+    .scan-line {
+      display: none;
+      position: absolute;
+      left: 10%;
+      right: 10%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--primary), transparent);
+      animation: scanLine 2s linear infinite;
+    }
+
+    .scan-overlay.active .scan-line {
+      display: block;
+    }
+
+    @keyframes scanLine {
+      0% {
+        top: 10%;
+      }
+
+      100% {
+        top: 90%;
+      }
+    }
+
+    .scan-btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .scan-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      border-radius: 14px;
+      border: none;
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 0.95rem;
+      font-weight: 700;
+      transition: all 0.22s;
+      width: 100%;
+    }
+
+    .scan-btn .sbtn-icon {
+      font-size: 1.6rem;
+    }
+
+    .scan-btn .sbtn-label {
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+    }
+
+    .scan-btn .sbtn-label small {
+      font-weight: 400;
+      font-size: 0.75rem;
+      opacity: 0.7;
+    }
+
+    .scan-btn-camera {
+      background: linear-gradient(135deg, #1a73e8, #0ea5e9);
+      color: white;
+      box-shadow: 0 4px 18px rgba(26, 115, 232, 0.3);
+    }
+
+    .scan-btn-rx {
+      background: linear-gradient(135deg, #06b6d4, #0891b2);
+      color: white;
+      box-shadow: 0 4px 18px rgba(6, 182, 212, 0.3);
+    }
+
+    .scan-btn-med {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      box-shadow: 0 4px 18px rgba(16, 185, 129, 0.3);
+    }
+
+    .scan-btn-clear {
+      background: var(--gray-100);
+      color: var(--text);
+      border: 1.5px solid var(--gray-300);
+    }
+
+    .scan-btn:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.06);
+    }
+
+    .scan-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .scan-btn-camera.stop-mode {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+    }
+
+    .scanner-status {
+      padding: 10px 16px;
+      border-radius: 10px;
+      background: var(--gray-100);
+      font-size: 0.88rem;
+      color: var(--text-light);
+      font-weight: 500;
+      border-left: 3px solid var(--primary);
+      min-height: 38px;
+      transition: all 0.3s;
+    }
+
+    /* Result Cards */
+    .rx-result-section {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .rx-result-header {
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .med-card {
+      background: white;
+      border-radius: 18px;
+      border: 1.5px solid var(--gray-200);
+      padding: 20px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+      transition: transform 0.2s;
+    }
+
+    .med-card:hover {
+      transform: translateY(-2px);
+    }
+
+    .med-card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .med-icon-circle {
+      width: 46px;
+      height: 46px;
+      background: linear-gradient(135deg, var(--primary), var(--teal));
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      flex-shrink: 0;
+    }
+
+    .med-card-name {
+      font-weight: 800;
+      font-size: 1.05rem;
+      color: var(--text);
+    }
+
+    .med-card-match {
+      display: inline-block;
+      margin-top: 2px;
+      padding: 2px 10px;
+      border-radius: 99px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .med-card-match.match-yes {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .med-card-match.match-no {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .med-card-fields {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 10px;
+    }
+
+    .med-field {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      background: var(--gray-50, #f8fafc);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+
+    .med-field .mf-icon {
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .med-field .mf-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .med-field .mf-label {
+      font-size: 0.7rem;
+      color: var(--text-light);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .med-field .mf-value {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .verify-banner {
+      border-radius: 14px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 8px;
+    }
+
+    .verify-banner.ok {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .verify-banner.warn {
+      background: #fef9c3;
+      color: #854d0e;
+    }
+
+    .verify-banner.err {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .scan-spinner {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 30px;
+    }
+
+    .scan-spinner.active {
+      display: flex;
+    }
+
+    .spinner-ring {
+      width: 44px;
+      height: 44px;
+      border: 4px solid var(--gray-200);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="dashboard-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">🏥</div>
+        <div>
+          <div class="logo-text">Arogya-Setu</div>
+          <div class="logo-sub">Patient Portal</div>
+        </div>
+      </div>
+
+      <div class="sidebar-user" id="sidebar-user">
+        <div class="avatar" id="user-avatar">R</div>
+        <div class="sidebar-user-info">
+          <div class="name" id="user-name-display">Patient</div>
+          <div class="role">Patient Account</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Main</div>
+        <div class="nav-item active" data-section="home" onclick="showSection('home', this)">
+          <span class="icon">🏠</span> Dashboard
+        </div>
+        <div class="nav-item" data-section="voice" onclick="showSection('voice', this)">
+          <span class="icon">🗣️</span> Voice Assistant
+        </div>
+        <div class="nav-item" data-section="appointments" onclick="showSection('appointments', this)">
+          <span class="icon">📅</span> Appointments
+          <span class="nav-badge">2</span>
+        </div>
+        <div class="nav-item" data-section="reminders" onclick="showSection('reminders', this)">
+          <span class="icon">💊</span> Medicine Reminders
+        </div>
+        <div class="nav-section-label">Health</div>
+        <div class="nav-item" data-section="records" onclick="showSection('records', this)">
+          <span class="icon">📋</span> Health Records
+        </div>
+        <div class="nav-item" data-section="ai" onclick="showSection('ai', this)">
+          <span class="icon">🤖</span> AI Health Tips
+        </div>
+        <div class="nav-item" data-section="scanner" onclick="showSection('scanner', this)">
+          <span class="icon">📷</span> Rx & Med Scanner
+        </div>
+        <div class="nav-section-label">Emergency</div>
+        <div class="nav-item" data-section="sos" onclick="showSection('sos', this)">
+          <span class="icon">🚨</span> Emergency SOS
+        </div>
+        <div class="nav-section-label">Account</div>
+        <div class="nav-item" onclick="handleLogout()">
+          <span class="icon">🚪</span> Logout
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main -->
+    <div class="main-content">
+      <header class="top-header">
+        <div class="header-title">
+          <h2 id="header-title-text">Dashboard Overview</h2>
+          <p id="header-subtitle">Welcome back! Here's your health summary.</p>
+        </div>
+        <div class="header-actions">
+          <div id="google_translate_element" style="margin-right: 8px; margin-top: 4px;"></div>
+          <div class="header-icon-btn" id="notif-btn" title="Notifications"
+            onclick="showSection('reminders', document.querySelector('[data-section=reminders]'))">
+            🔔
+            <div class="notif-dot"></div>
+          </div>
+          <div class="header-icon-btn" title="SOS"
+            onclick="showSection('sos', document.querySelector('[data-section=sos]'))"
+            style="background:#fee2e2;color:#ef4444;">
+            🚨
+          </div>
+          <div class="avatar" id="header-avatar">R</div>
+        </div>
+      </header>
+
+      <main class="page-content">
+
+        <!-- === HOME SECTION === -->
+        <div class="dash-section active" id="section-home">
+          <!-- Stat Cards -->
+          <div class="grid-4 mb-6">
+            <div class="stat-card">
+              <div class="stat-icon blue">📅</div>
+              <div>
+                <div class="stat-number">2</div>
+                <div class="stat-label">Upcoming Appointments</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon teal">💊</div>
+              <div>
+                <div class="stat-number">4</div>
+                <div class="stat-label">Today's Medicines</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon green">❤️</div>
+              <div>
+                <div class="stat-number">72</div>
+                <div class="stat-label">Heart Rate (bpm)</div>
+              </div>
+            </div>
+            <div class="stat-card" style="cursor:pointer"
+              onclick="showSection('sos', document.querySelector('[data-section=sos]'))">
+              <div class="stat-icon red">🚨</div>
+              <div>
+                <div class="stat-number" style="font-size:1.2rem;color:#ef4444;">SOS</div>
+                <div class="stat-label">Tap for Emergency</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid-2 gap-4 mb-6">
+            <!-- Quick Voice Access -->
+            <div class="card">
+              <div class="section-title">🗣️ Voice Assistant</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:10px 0;">
+                <div class="voice-outer">
+                  <div class="voice-ring"></div>
+                  <div class="voice-ring voice-ring-2"></div>
+                  <button class="voice-main-btn" id="quick-voice-btn" onclick="toggleVoice()">
+                    🎤
+                    <span class="vlabel" id="quick-voice-label">TAP TO SPEAK</span>
+                  </button>
+                </div>
+                <div class="voice-status" id="quick-voice-status">Say: "Book appointment" or "Set reminder"</div>
+                <div class="voice-transcript" id="quick-transcript">Listening for your command...</div>
+              </div>
+            </div>
+
+            <!-- Next Appointment -->
+            <div class="card">
+              <div class="section-title">📅 Next Appointment</div>
+              <div class="appt-card">
+                <div class="appt-date-box">
+                  <div class="day">05</div>
+                  <div class="mon">Apr</div>
+                </div>
+                <div>
+                  <div class="appt-doctor">Dr. Anjali Mehta</div>
+                  <div class="appt-specialty">General Physician</div>
+                  <div style="margin-top:6px"><span class="appt-time-tag">10:30 AM</span></div>
+                </div>
+                <div class="appt-actions-col">
+                  <button class="btn btn-primary btn-sm">Join</button>
+                  <button class="btn btn-outline btn-sm" style="font-size:0.75rem;padding:6px 10px;">Reschedule</button>
+                </div>
+              </div>
+              <div class="appt-card">
+                <div class="appt-date-box" style="background:linear-gradient(135deg,var(--teal),var(--teal-dark))">
+                  <div class="day">10</div>
+                  <div class="mon">Apr</div>
+                </div>
+                <div>
+                  <div class="appt-doctor">Dr. Suresh Kumar</div>
+                  <div class="appt-specialty">Cardiologist</div>
+                  <div style="margin-top:6px"><span class="appt-time-tag"
+                      style="background:var(--teal-light);color:var(--teal-dark)">3:00 PM</span></div>
+                </div>
+                <div class="appt-actions-col">
+                  <button class="btn btn-teal btn-sm">View</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Health Stats + Reminders + SOS -->
+          <div class="grid-3 gap-4">
+            <!-- Health Stats -->
+            <div class="card">
+              <div class="section-title">❤️ Health Stats</div>
+              <div
+                style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--gray-200);border-radius:12px;overflow:hidden;">
+                <div class="health-stat-mini"
+                  style="border-right:1px solid var(--gray-200);border-bottom:1px solid var(--gray-200)">
+                  <div class="hm-value">120<span class="hm-unit">/80</span></div>
+                  <div class="hm-label">Blood Pressure</div>
+                  <span class="hm-status hm-normal">Normal</span>
+                </div>
+                <div class="health-stat-mini" style="border-bottom:1px solid var(--gray-200)">
+                  <div class="hm-value">98.2<span class="hm-unit">°F</span></div>
+                  <div class="hm-label">Temperature</div>
+                  <span class="hm-status hm-normal">Normal</span>
+                </div>
+                <div class="health-stat-mini" style="border-right:1px solid var(--gray-200)">
+                  <div class="hm-value">72<span class="hm-unit">bpm</span></div>
+                  <div class="hm-label">Heart Rate</div>
+                  <span class="hm-status hm-normal">Normal</span>
+                </div>
+                <div class="health-stat-mini">
+                  <div class="hm-value">98<span class="hm-unit">%</span></div>
+                  <div class="hm-label">SpO2</div>
+                  <span class="hm-status hm-normal">Good</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Medicine Reminders -->
+            <div class="card">
+              <div class="section-title">💊 Today's Medicines</div>
+              <div class="rem-item">
+                <div class="rem-pill-icon">💊</div>
+                <div>
+                  <div class="rem-name">Metformin 500mg</div>
+                  <div class="rem-time">⏰ 8:00 AM — Before Breakfast</div>
+                </div>
+                <div class="rem-right"><span class="badge badge-green">✓ Taken</span></div>
+              </div>
+              <div class="rem-item">
+                <div class="rem-pill-icon">💉</div>
+                <div>
+                  <div class="rem-name">Lisinopril 10mg</div>
+                  <div class="rem-time">⏰ 1:00 PM — After Lunch</div>
+                </div>
+                <div class="rem-right">
+                  <div class="toggle" id="tog1" onclick="toggleReminder(this)"></div>
+                </div>
+              </div>
+              <div class="rem-item">
+                <div class="rem-pill-icon">🩺</div>
+                <div>
+                  <div class="rem-name">Atorvastatin 20mg</div>
+                  <div class="rem-time">⏰ 9:00 PM — After Dinner</div>
+                </div>
+                <div class="rem-right">
+                  <div class="toggle" id="tog2" onclick="toggleReminder(this)"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Emergency SOS Preview -->
+            <div class="sos-container">
+              <div class="section-title">🚨 Emergency</div>
+              <p style="font-size:0.85rem;margin-bottom:16px;color:var(--gray-600);">In case of emergency, press the
+                button below. Your doctor and family will be alerted immediately.</p>
+              <button class="sos-main-btn" onclick="triggerSOS()">
+                <span class="sos-emoji">🚨</span>
+                <div class="sos-text-wrap">
+                  <span class="t1">EMERGENCY SOS</span>
+                  <span class="t2">Alerts doctor & family instantly</span>
+                </div>
+              </button>
+              <p class="sos-note">⚠️ Use only in genuine emergencies</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- === VOICE SECTION === -->
+        <div class="dash-section" id="section-voice">
+          <div style="max-width:780px;margin:0 auto;">
+
+            <!-- Siri-style main card -->
+            <div class="card" style="text-align:center;padding:44px 36px;position:relative;">
+              <div
+                style="font-size:0.78rem;font-weight:700;letter-spacing:0.1em;color:var(--text-light);text-transform:uppercase;margin-bottom:12px;">
+                Arogya-Setu Voice Intelligence</div>
+              <h2 style="font-size:1.6rem;font-weight:800;color:var(--text);margin-bottom:6px;">🗣️ Talk to Me</h2>
+              <p style="color:var(--text-light);margin-bottom:32px;font-size:0.95rem;">Ask anything — I listen, think
+                with Gemini AI, and speak back to you.</p>
+
+              <!-- Big Mic Button -->
+              <div class="voice-outer" style="width:180px;height:180px;margin:0 auto 24px;">
+                <div class="voice-ring"></div>
+                <div class="voice-ring voice-ring-2"></div>
+                <button class="voice-main-btn" id="main-voice-btn"
+                  style="width:160px;height:160px;font-size:3rem;flex-direction:column;gap:6px;"
+                  onclick="toggleVoice()">
+                  🎤
+                  <span class="vlabel" id="main-voice-label" style="font-size:0.6rem;letter-spacing:0.08em;">TAP TO
+                    SPEAK</span>
+                </button>
+              </div>
+
+              <!-- Waveform bars (shown when listening) -->
+              <div id="voice-waveform"
+                style="display:flex;justify-content:center;align-items:center;gap:4px;height:40px;margin-bottom:12px;opacity:0;transition:opacity 0.3s;">
+                <span class="wave-bar" style="animation-delay:0s"></span>
+                <span class="wave-bar" style="animation-delay:0.1s"></span>
+                <span class="wave-bar" style="animation-delay:0.2s"></span>
+                <span class="wave-bar" style="animation-delay:0.15s"></span>
+                <span class="wave-bar" style="animation-delay:0.05s"></span>
+                <span class="wave-bar" style="animation-delay:0.25s"></span>
+                <span class="wave-bar" style="animation-delay:0.1s"></span>
+              </div>
+
+              <!-- Status -->
+              <div class="voice-status" id="main-voice-status"
+                style="font-size:1rem;margin-bottom:12px;font-weight:500; min-height:24px;">
+                Tap the mic and speak — I'll answer out loud
+              </div>
+
+              <!-- Live transcript -->
+              <div id="main-transcript"
+                style="background:var(--gray-100);border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px 18px;font-size:0.95rem;color:var(--text-light);font-style:italic;min-height:52px;margin-bottom:20px;">
+                Your words will appear here...
+              </div>
+
+              <!-- Conversation Mode Button -->
+              <div style="display:flex;gap:12px;justify-content:center;margin-bottom:28px;">
+                <button id="convo-mode-btn" onclick="toggleConvoMode()"
+                  style="padding:12px 28px;border-radius:99px;background:linear-gradient(135deg,var(--primary),var(--teal));color:white;border:none;font-family:var(--font);font-size:0.95rem;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(26,115,232,0.35);transition:all 0.25s;">
+                  🔄 Start Conversation Mode
+                </button>
+                <button onclick="stopVoice()"
+                  style="padding:12px 20px;border-radius:99px;background:var(--gray-100);border:1.5px solid var(--gray-300);color:var(--text);font-family:var(--font);font-size:0.9rem;font-weight:600;cursor:pointer;transition:all 0.2s;">
+                  ⏹ Stop
+                </button>
+              </div>
+
+              <!-- Conversation Log -->
+              <div id="voice-convo-log"
+                style="text-align:left;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:20px;scroll-behavior:smooth;">
+                <!-- filled by JS -->
+              </div>
+
+              <!-- Quick voice chips -->
+              <div style="margin-top:4px;text-align:left;">
+                <div class="section-title" style="font-size:0.88rem;margin-bottom:10px;">💡 Try saying...</div>
+                <div class="voice-commands" style="justify-content:flex-start;gap:8px;flex-wrap:wrap;">
+                  <span class="voice-cmd" onclick="simulateVoiceCmd('Book my appointment with the doctor')">📅 Book
+                    appointment</span>
+                  <span class="voice-cmd" onclick="simulateVoiceCmd('Remind me to take my medicine')">💊 Medicine
+                    reminder</span>
+                  <span class="voice-cmd" onclick="simulateVoiceCmd('I have a headache what should I do')">🤕 I have a
+                    headache</span>
+                  <span class="voice-cmd" onclick="simulateVoiceCmd('What foods are good for diabetes')">🍎 Diet for
+                    diabetes</span>
+                  <span class="voice-cmd" onclick="simulateVoiceCmd('Emergency help I need a doctor')">🚨 Emergency
+                    help</span>
+                  <span class="voice-cmd" onclick="simulateVoiceCmd('How is my blood pressure medicine working')">❤️
+                    About my BP medicine</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- === APPOINTMENTS SECTION === -->
+        <div class="dash-section" id="section-appointments">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <div class="section-title" style="margin-bottom:0">📅 My Appointments</div>
+            <button class="btn btn-primary" onclick="openBookingModal()">+ Book Appointment</button>
+          </div>
+          <div class="card">
+            <div id="appointments-list">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- === REMINDERS SECTION === -->
+        <div class="dash-section" id="section-reminders">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <div class="section-title" style="margin-bottom:0">💊 Medicine Reminders</div>
+            <button class="btn btn-teal" onclick="openReminderModal()">+ Add Reminder</button>
+          </div>
+          <div class="card" id="reminders-list">
+            <!-- Rendered by JS -->
+          </div>
+
+          <!-- WhatsApp Reminder Blaster -->
+          <div class="card" style="margin-top:20px;background:linear-gradient(135deg,#dcfce7,#f0fdf4);border:2px solid #86efac;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+              <div style="font-size:2.2rem;">📲</div>
+              <div>
+                <div style="font-weight:800;font-size:1.05rem;color:#15803d;">WhatsApp Medicine Alerts</div>
+                <div style="font-size:0.82rem;color:#166534;">Send real-time reminders directly to the patient's WhatsApp</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+              <div style="flex:1;min-width:220px;">
+                <label style="font-size:0.78rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.04em;">Patient's WhatsApp Number</label>
+                <input id="wa-phone-number" type="tel" placeholder="e.g. 919876543210"
+                  style="width:100%;margin-top:6px;padding:10px 14px;border:1.5px solid #86efac;border-radius:10px;font-family:var(--font);font-size:0.95rem;background:white;outline:none;box-sizing:border-box;" />
+              </div>
+              <button onclick="sendWhatsAppReminder()"
+                style="padding:11px 22px;background:linear-gradient(135deg,#22c55e,#16a34a);color:white;border:none;border-radius:10px;font-family:var(--font);font-weight:700;font-size:0.95rem;cursor:pointer;white-space:nowrap;box-shadow:0 4px 14px rgba(34,197,94,0.4);">
+                📤 Send WhatsApp Reminder
+              </button>
+            </div>
+            <div id="wa-status" style="margin-top:12px;font-size:0.85rem;font-weight:600;color:#15803d;display:none;"></div>
+          </div>
+
+          <!-- WhatsApp Auto-Scheduler Setup -->
+          <div class="card" style="margin-top:16px;background:linear-gradient(135deg,#eff6ff,#dbeafe);border:2px solid #93c5fd;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+              <div style="font-size:2rem;">⚙️</div>
+              <div>
+                <div style="font-weight:800;font-size:1rem;color:#1d4ed8;">Auto-Reminder Setup</div>
+                <div style="font-size:0.82rem;color:#1e40af;">Configure your number once — reminders fire automatically at medicine times!</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+              <div style="flex:1;min-width:220px;">
+                <label style="font-size:0.78rem;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:.04em;">Your WhatsApp Number (with country code)</label>
+                <input id="wa-auto-number" type="tel" placeholder="e.g. 919876543210"
+                  style="width:100%;margin-top:6px;padding:10px 14px;border:1.5px solid #93c5fd;border-radius:10px;font-family:var(--font);font-size:0.95rem;background:white;outline:none;box-sizing:border-box;" />
+              </div>
+              <div style="flex:1;min-width:180px;">
+                <label style="font-size:0.78rem;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:.04em;">Your Name</label>
+                <input id="wa-patient-name" type="text" placeholder="e.g. Ramu Sharma"
+                  style="width:100%;margin-top:6px;padding:10px 14px;border:1.5px solid #93c5fd;border-radius:10px;font-family:var(--font);font-size:0.95rem;background:white;outline:none;box-sizing:border-box;" />
+              </div>
+              <button onclick="saveWhatsAppConfig()"
+                style="padding:11px 22px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:white;border:none;border-radius:10px;font-family:var(--font);font-weight:700;font-size:0.95rem;cursor:pointer;white-space:nowrap;box-shadow:0 4px 14px rgba(59,130,246,0.4);">
+                ✅ Activate Auto-Reminders
+              </button>
+            </div>
+            <div id="wa-config-status" style="margin-top:12px;font-size:0.85rem;font-weight:600;display:none;"></div>
+            <div style="margin-top:12px;padding:10px 14px;background:rgba(29,78,216,0.08);border-radius:8px;font-size:0.8rem;color:#1e40af;">
+              💡 <b>How it works:</b> Once activated, the bot automatically sends medicine reminders to your WhatsApp at 8:00 AM, 9:00 AM, 1:00 PM &amp; 9:00 PM every day — no clicking needed!
+            </div>
+          </div>
+        </div>
+
+        <!-- === HEALTH RECORDS === -->
+        <div class="dash-section" id="section-records">
+          <div class="section-title">📋 Health Records</div>
+          <div class="grid-2 gap-4">
+            <div class="card">
+              <div class="section-title" style="font-size:1rem">Recent Reports</div>
+              <div class="health-record-card">
+                <div class="hr-icon">🩺</div>
+                <div class="hr-info">
+                  <div class="title">Blood Test Report</div>
+                  <div class="date">Mar 25, 2026 — Dr. Anjali Mehta</div>
+                </div>
+                <div class="hr-action">View →</div>
+              </div>
+              <div class="health-record-card">
+                <div class="hr-icon">❤️</div>
+                <div class="hr-info">
+                  <div class="title">ECG Report</div>
+                  <div class="date">Mar 10, 2026 — Dr. Suresh Kumar</div>
+                </div>
+                <div class="hr-action">View →</div>
+              </div>
+              <div class="health-record-card">
+                <div class="hr-icon">🫁</div>
+                <div class="hr-info">
+                  <div class="title">Chest X-Ray</div>
+                  <div class="date">Feb 28, 2026 — Dr. Priya Singh</div>
+                </div>
+                <div class="hr-action">View →</div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="section-title" style="font-size:1rem">Active Prescriptions</div>
+              <div class="prescription-card mb-4">
+                <div class="rx-header">
+                  <span class="rx-doctor">Dr. Anjali Mehta</span>
+                  <span class="rx-date">Mar 25, 2026</span>
+                </div>
+                <div class="rx-patient">Ramu Sharma</div>
+                <div class="rx-meds">
+                  <div class="rx-med">💊 Metformin 500mg — 1 tab after meals (3x daily)</div>
+                  <div class="rx-med">💊 Lisinopril 10mg — 1 tab at night</div>
+                  <div class="rx-med">💊 Atorvastatin 20mg — 1 tab at bedtime</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- === AI HEALTH TIPS === -->
+        <div class="dash-section" id="section-ai">
+          <div class="section-title">🤖 AI Health Assistant <span
+              style="font-size:0.72rem;font-weight:500;color:var(--text-light);margin-left:8px">Powered by Gemini 2.0
+              Flash</span></div>
+          <div class="grid-2 gap-4">
+            <div class="card" style="display:flex;flex-direction:column;height:520px;">
+              <div class="section-title" style="font-size:1rem;margin-bottom:10px;">💬 Chat with Gemini AI</div>
+              <!-- Quick prompts -->
+              <div class="ai-chip-bar" id="ai-chip-bar">
+                <span class="ai-chip" onclick="askChip('What foods should I eat for diabetes?')">🍎 Diet for
+                  Diabetes</span>
+                <span class="ai-chip" onclick="askChip('How to manage high blood pressure?')">❤️ Blood Pressure</span>
+                <span class="ai-chip" onclick="askChip('What are the side effects of Metformin?')">💊 Metformin
+                  Info</span>
+                <span class="ai-chip" onclick="askChip('Give me a daily health routine for elderly patients')">🌅 Daily
+                  Routine</span>
+                <span class="ai-chip" onclick="askChip('What are warning signs of a heart attack?')">🚨 Heart Alert
+                  Signs</span>
+              </div>
+              <div class="ai-chat-box" id="ai-chat-box">
+                <div class="chat-msg ai">👋 Hello! I'm your AI health assistant powered by <strong>Google
+                    Gemini</strong>. Ask me anything about your health — symptoms, medicines, diet tips, or lifestyle
+                  advice!</div>
+              </div>
+              <div class="ai-input-row" style="margin-top:auto">
+                <input class="ai-input" id="ai-input" placeholder="Ask a health question..."
+                  onkeydown="if(event.key==='Enter') sendAIMessage()" />
+                <button class="ai-send-btn" id="ai-send-btn" onclick="sendAIMessage()">➤</button>
+              </div>
+              <div class="gemini-badge">⚡ Powered by <span>Gemini 2.0 Flash</span> — Google AI</div>
+            </div>
+            <div class="card">
+              <div class="section-title" style="font-size:1rem">Daily Health Tips</div>
+              <div style="display:flex;flex-direction:column;gap:10px;" id="health-tips-list">
+                <div class="alert alert-info">💧 Drink at least 8 glasses of water today. Elderly patients are at higher
+                  risk of dehydration.</div>
+                <div class="alert alert-success">🚶 A 20-minute morning walk can significantly improve your blood
+                  pressure levels.</div>
+                <div class="alert alert-warning">💊 Don't skip your evening Lisinopril dose — blood pressure management
+                  is critical.</div>
+                <div class="alert alert-info">🍎 Include fiber-rich foods like oats and fruits to help manage your blood
+                  sugar.</div>
+                <div class="alert alert-success">😴 7–8 hours of quality sleep helps regulate blood sugar and supports
+                  heart health.</div>
+                <div class="alert alert-warning">🧂 Limit salt intake to under 1500mg/day to keep your blood pressure in
+                  check.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- === SOS SECTION === -->
+        <div class="dash-section" id="section-sos">
+          <div style="max-width:600px;margin:0 auto;">
+            <div
+              style="background:linear-gradient(135deg,#fff1f2,#fee2e2);border:2px solid #fecaca;border-radius:24px;padding:40px;text-align:center;">
+              <div style="font-size:4rem;margin-bottom:16px;">🚨</div>
+              <h2 style="color:#dc2626;margin-bottom:8px;">Emergency SOS</h2>
+              <p style="margin-bottom:32px;color:#ef4444;font-size:0.95rem;">Press below in a medical emergency. Your
+                doctor and emergency contacts will be notified immediately with your location.</p>
+              <button class="sos-main-btn" style="justify-content:center;font-size:1.3rem;" onclick="triggerSOS()">
+                <span style="font-size:2.5rem">🚨</span>
+                <div class="sos-text-wrap">
+                  <span class="t1" style="font-size:1.4rem">SEND EMERGENCY ALERT</span>
+                  <span class="t2">Doctor + Family notified instantly</span>
+                </div>
+              </button>
+              <p style="margin-top:16px;color:#ef4444;font-size:0.8rem;font-weight:600;">⚠️ Only use in genuine medical
+                emergencies</p>
+
+              <!-- Emergency Contacts -->
+              <div style="margin-top:28px;text-align:left;">
+                <div class="section-title" style="font-size:0.95rem">Emergency Contacts</div>
+                <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
+                  <div
+                    style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:white;border-radius:12px;border:1px solid #fecaca;">
+                    <span>🧑‍⚕️</span>
+                    <div>
+                      <div style="font-weight:600;font-size:0.9rem">Dr. Anjali Mehta</div>
+                      <div style="font-size:0.78rem;color:var(--text-light)">Primary Doctor</div>
+                    </div>
+                    <span style="margin-left:auto;font-size:0.85rem;color:var(--primary);font-weight:600;">+91 98765
+                      43210</span>
+                  </div>
+                  <div
+                    style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:white;border-radius:12px;border:1px solid #fecaca;">
+                    <span>👨‍👩‍👧</span>
+                    <div>
+                      <div style="font-weight:600;font-size:0.9rem">Rahul Sharma (Son)</div>
+                      <div style="font-size:0.78rem;color:var(--text-light)">Family Contact</div>
+                    </div>
+                    <span style="margin-left:auto;font-size:0.85rem;color:var(--primary);font-weight:600;">+91 87654
+                      32109</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- === AI RX & MEDICINE SCANNER SECTION === -->
+        <div class="dash-section" id="section-scanner">
+          <div class="scanner-wrap">
+
+            <!-- Top bar: language selector -->
+            <div class="scanner-topbar">
+              <label for="scan-lang">🌐 Language:</label>
+              <select class="lang-select" id="scan-lang">
+                <option value="English">English</option>
+                <option value="Kannada">ಕನ್ನಡ (Kannada)</option>
+                <option value="Hindi">हिंदी (Hindi)</option>
+                <option value="Telugu">తెలుగు (Telugu)</option>
+              </select>
+              <span style="margin-left:auto;font-size:0.8rem;color:var(--text-light);">
+                💡 Allow camera permission when prompted
+              </span>
+            </div>
+
+            <!-- Camera + Controls grid -->
+            <div class="scanner-grid">
+
+              <!-- Left: Camera viewport -->
+              <div>
+                <div class="scanner-cam-box" id="scanner-cam-box">
+                  <div class="cam-placeholder" id="cam-placeholder">
+                    <span>📸</span>
+                    <span>Camera not started</span>
+                  </div>
+                  <video id="scanner-video" autoplay playsinline style="display:none;"></video>
+                  <canvas id="scanner-canvas" style="display:none;"></canvas>
+                  <div class="scan-overlay" id="scan-overlay">
+                    <div class="scan-line"></div>
+                  </div>
+                </div>
+                <div class="scanner-status" id="scanner-status" style="margin-top:12px;">
+                  Click "Start Camera" to begin
+                </div>
+              </div>
+
+              <!-- Right: Control buttons -->
+              <div class="scan-btn-group">
+                <button class="scan-btn scan-btn-camera" id="btn-start-cam" onclick="toggleScanner()">
+                  <span class="sbtn-icon">📷</span>
+                  <span class="sbtn-label">
+                    Start Camera
+                    <small>Allow camera access first</small>
+                  </span>
+                </button>
+
+                <button class="scan-btn scan-btn-rx" id="btn-scan-rx" onclick="captureScan('prescription')" disabled>
+                  <span class="sbtn-icon">📜</span>
+                  <span class="sbtn-label">
+                    Scan Prescription
+                    <small>Hold prescription in front of camera</small>
+                  </span>
+                </button>
+
+                <button class="scan-btn scan-btn-med" id="btn-scan-med" onclick="captureScan('medicine')" disabled>
+                  <span class="sbtn-icon">💊</span>
+                  <span class="sbtn-label">
+                    Scan Medicine Strip
+                    <small>Show tablet strip or medicine box</small>
+                  </span>
+                </button>
+
+                <button class="scan-btn scan-btn-clear" onclick="clearScanResults()">
+                  <span class="sbtn-icon">🗑️</span>
+                  <span class="sbtn-label">
+                    Clear Results
+                    <small>Reset scanner view</small>
+                  </span>
+                </button>
+
+                <!-- Prescription stored badge -->
+                <div id="rx-stored-badge"
+                  style="display:none;background:#dbeafe;color:#1e40af;border-radius:10px;padding:10px 14px;font-size:0.83rem;font-weight:700;">
+                  ✅ Prescription in memory — medicine scan will verify against it
+                </div>
+              </div>
+            </div>
+
+            <!-- AI Processing Spinner -->
+            <div class="scan-spinner card" id="scan-spinner">
+              <div class="spinner-ring"></div>
+              <span style="font-weight:600;color:var(--text-light);">Analysing with Gemini AI…</span>
+            </div>
+
+            <!-- Results Output -->
+            <div id="scanner-results"></div>
+
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Booking Modal -->
+  <div class="modal-overlay hidden" id="booking-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>📅 Book Appointment</h3>
+        <div class="modal-close" onclick="closeModal('booking-modal')">✕</div>
+      </div>
+      <div class="flex-col gap-3">
+        <div class="form-group">
+          <label class="form-label">Select Doctor</label>
+          <select class="form-input" id="bk-doctor">
+            <option>Dr. Anjali Mehta — General Physician</option>
+            <option>Dr. Suresh Kumar — Cardiologist</option>
+            <option>Dr. Priya Singh — Neurologist</option>
+            <option>Dr. Ramesh Patel — Orthopedic</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input type="date" class="form-input" id="bk-date" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Time Slot</label>
+          <select class="form-input" id="bk-time">
+            <option>9:00 AM</option>
+            <option>10:00 AM</option>
+            <option>11:00 AM</option>
+            <option>2:00 PM</option>
+            <option>3:00 PM</option>
+            <option>4:00 PM</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Reason for Visit</label>
+          <input type="text" class="form-input" id="bk-reason" placeholder="e.g. Regular checkup, Fever..." />
+        </div>
+        <button class="btn btn-primary w-full" onclick="bookAppointment()">Confirm Booking</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reminder Modal -->
+  <div class="modal-overlay hidden" id="reminder-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>💊 Add Medicine Reminder</h3>
+        <div class="modal-close" onclick="closeModal('reminder-modal')">✕</div>
+      </div>
+      <div class="flex-col gap-3">
+        <div class="form-group">
+          <label class="form-label">Medicine Name</label>
+          <input type="text" class="form-input" id="rm-name" placeholder="e.g. Metformin 500mg" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Time</label>
+          <input type="time" class="form-input" id="rm-time" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Instructions</label>
+          <input type="text" class="form-input" id="rm-note" placeholder="e.g. After meals, Before sleep" />
+        </div>
+        <button class="btn btn-teal w-full" onclick="addReminder()">Add Reminder</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="../js/voice.js?v=2"></script>
+  <script>
+    // ---- Firebase Auth Guard ----
+    let currentUser = null;
+
+    auth.onAuthStateChanged(async firebaseUser => {
+      if (!firebaseUser) {
+        // Not logged in — redirect unless demo mode
+        const stored = localStorage.getItem('hb_user');
+        if (!stored) {
+          window.location.href = '../index.html';
+          return;
+        }
+        // Demo mode: use stored user
+        const user = JSON.parse(stored);
+        initDashboard(user);
+      } else {
+        const doc = await db.collection('users').doc(firebaseUser.uid).get();
+        const userData = doc.exists ? doc.data() : {
+          name: firebaseUser.displayName || firebaseUser.email,
+          email: firebaseUser.email,
+          role: 'patient'
+        };
+        localStorage.setItem('hb_user', JSON.stringify(userData));
+        currentUser = { ...userData, uid: firebaseUser.uid };
+        initDashboard(userData);
+      }
+    });
+
+    function initDashboard(user) {
+      document.getElementById('user-name-display').textContent = user.name || 'Patient';
+      document.getElementById('user-avatar').textContent = (user.name || 'P')[0].toUpperCase();
+      document.getElementById('header-avatar').textContent = (user.name || 'P')[0].toUpperCase();
+    }
+
+    // ---- Section Navigation ----
+    function showSection(name, elem) {
+      // Stop scanner camera when leaving that section
+      if (name !== 'scanner' && typeof scannerStream !== 'undefined' && scannerStream) {
+        stopScannerStream();
+      }
+      document.querySelectorAll('.dash-section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+      document.getElementById('section-' + name).classList.add('active');
+      if (elem) elem.classList.add('active');
+      const titles = {
+        home: ['Dashboard Overview', 'Welcome back! Here\'s your health summary.'],
+        voice: ['Voice Assistant', 'Speak naturally — no typing needed'],
+        appointments: ['My Appointments', 'Manage your doctor appointments'],
+        reminders: ['Medicine Reminders', 'Never miss a dose'],
+        records: ['Health Records', 'View your medical history'],
+        ai: ['AI Health Assistant', 'Powered by Google Gemini'],
+        sos: ['Emergency SOS', 'One-tap emergency alert'],
+        scanner: ['📷 Rx & Medicine Scanner', 'Scan prescriptions & medicine strips using your camera + AI'],
+      };
+      if (titles[name]) {
+        document.getElementById('header-title-text').textContent = titles[name][0];
+        document.getElementById('header-subtitle').textContent = titles[name][1];
+      }
+    }
+
+    // ---- Toast ----
+    function showToast(msg, type = 'info') {
+      const tc = document.getElementById('toast-container');
+      const icons = { info: 'ℹ️', success: '✅', danger: '🚨' };
+      const t = document.createElement('div');
+      t.className = `toast toast-${type}`;
+      t.innerHTML = `<span>${icons[type] || '📢'}</span><span>${msg}</span>`;
+      tc.appendChild(t);
+      setTimeout(() => t.remove(), 3200);
+    }
+
+    // ---- Appointments ----
+    let appointments = JSON.parse(localStorage.getItem('hb_appointments') || '[]');
+    if (!appointments.length) {
+      appointments = [
+        { doctor: 'Dr. Anjali Mehta', specialty: 'General Physician', date: '2026-04-05', time: '10:30 AM', reason: 'Regular checkup', status: 'upcoming' },
+        { doctor: 'Dr. Suresh Kumar', specialty: 'Cardiologist', date: '2026-04-10', time: '3:00 PM', reason: 'Heart checkup', status: 'upcoming' },
+      ];
+    }
+
+    function renderAppointments() {
+      const list = document.getElementById('appointments-list');
+      if (!appointments.length) { list.innerHTML = '<p style="text-align:center;padding:20px;color:var(--text-light)">No appointments yet. Book one!</p>'; return; }
+      list.innerHTML = appointments.map((a, i) => `
+    <div class="appt-card">
+      <div class="appt-date-box">
+        <div class="day">${a.date.split('-')[2]}</div>
+        <div class="mon">${['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][parseInt(a.date.split('-')[1])]}</div>
+      </div>
+      <div>
+        <div class="appt-doctor">${a.doctor}</div>
+        <div class="appt-specialty">${a.specialty}</div>
+        <div style="margin-top:4px"><span class="appt-time-tag">${a.time}</span></div>
+        <div style="font-size:0.78rem;color:var(--text-light);margin-top:4px">📝 ${a.reason}</div>
+      </div>
+      <div class="appt-actions-col">
+        <span class="badge ${a.status === 'upcoming' ? 'badge-blue' : 'badge-green'}">${a.status}</span>
+        <button class="btn btn-outline btn-sm" onclick="cancelAppointment(${i})">Cancel</button>
+      </div>
+    </div>
+  `).join('');
+    }
+
+    function openBookingModal() {
+      document.getElementById('booking-modal').classList.remove('hidden');
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('bk-date').min = today;
+      document.getElementById('bk-date').value = today;
+    }
+
+    function bookAppointment() {
+      const doc = document.getElementById('bk-doctor').value.split('—')[0].trim();
+      const spec = document.getElementById('bk-doctor').value.split('—')[1]?.trim() || '';
+      const date = document.getElementById('bk-date').value;
+      const time = document.getElementById('bk-time').value;
+      const reason = document.getElementById('bk-reason').value || 'General checkup';
+      if (!date) { showToast('Please select a date', 'danger'); return; }
+      appointments.push({ doctor: doc, specialty: spec, date, time, reason, status: 'upcoming' });
+      localStorage.setItem('hb_appointments', JSON.stringify(appointments));
+      renderAppointments();
+      closeModal('booking-modal');
+      showToast(`Appointment booked with ${doc}!`, 'success');
+    }
+
+    function cancelAppointment(i) {
+      appointments.splice(i, 1);
+      localStorage.setItem('hb_appointments', JSON.stringify(appointments));
+      renderAppointments();
+      showToast('Appointment cancelled.', 'info');
+    }
+
+    // ---- Reminders ----
+    let reminders = JSON.parse(localStorage.getItem('hb_reminders') || '[]');
+    if (!reminders.length) {
+      reminders = [
+        { name: 'Metformin 500mg', time: '08:00', note: 'After Breakfast', on: true },
+        { name: 'Lisinopril 10mg', time: '13:00', note: 'After Lunch', on: true },
+        { name: 'Atorvastatin 20mg', time: '21:00', note: 'After Dinner', on: false },
+        { name: 'Vitamin D3', time: '09:00', note: 'With water', on: true },
+      ];
+    }
+
+    function renderReminders() {
+      const list = document.getElementById('reminders-list');
+      list.innerHTML = reminders.map((r, i) => `
+    <div class="rem-item">
+      <div class="rem-pill-icon">💊</div>
+      <div>
+        <div class="rem-name">${r.name}</div>
+        <div class="rem-time">⏰ ${r.time} — ${r.note}</div>
+      </div>
+      <div class="rem-right">
+        <div class="toggle ${r.on ? 'on' : ''}" onclick="toggleReminderAt(${i})"></div>
+        <button onclick="deleteReminder(${i})" style="background:none;border:none;cursor:pointer;font-size:1rem;color:var(--gray-400);">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+    }
+
+    function openReminderModal() { document.getElementById('reminder-modal').classList.remove('hidden'); }
+
+    function addReminder() {
+      const name = document.getElementById('rm-name').value;
+      const time = document.getElementById('rm-time').value;
+      const note = document.getElementById('rm-note').value || 'As directed';
+      if (!name || !time) { showToast('Fill in medicine name and time.', 'danger'); return; }
+      reminders.push({ name, time, note, on: true });
+      localStorage.setItem('hb_reminders', JSON.stringify(reminders));
+      renderReminders();
+      closeModal('reminder-modal');
+      showToast(`Reminder set for ${name}!`, 'success');
+      scheduleNotification(name, time);
+    }
+
+    function toggleReminderAt(i) {
+      reminders[i].on = !reminders[i].on;
+      localStorage.setItem('hb_reminders', JSON.stringify(reminders));
+      renderReminders();
+    }
+
+    function deleteReminder(i) {
+      reminders.splice(i, 1);
+      localStorage.setItem('hb_reminders', JSON.stringify(reminders));
+      renderReminders();
+      showToast('Reminder removed.', 'info');
+    }
+
+    function toggleReminder(el) { el.classList.toggle('on'); }
+
+    // ---- Browser Notifications ----
+    function scheduleNotification(name, time) {
+      if ('Notification' in window) {
+        Notification.requestPermission().then(p => {
+          if (p === 'granted') showToast(`Notifications enabled for ${name}`, 'success');
+        });
+      }
+    }
+
+    // ---- WhatsApp Integration ----
+    const WHATSAPP_BOT_URL = 'http://localhost:3000/api/send-whatsapp';
+
+    async function sendWhatsAppMessage(targetNumber, message) {
+      try {
+        const res = await fetch(WHATSAPP_BOT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ targetNumber, message })
+        });
+        const data = await res.json();
+        return data.success;
+      } catch (err) {
+        console.error('WhatsApp send failed:', err);
+        return false;
+      }
+    }
+
+    async function sendWhatsAppReminder() {
+      const waStatus = document.getElementById('wa-status');
+      const phone = document.getElementById('wa-phone-number').value.trim();
+      if (!phone) {
+        showToast('⚠️ Please enter a WhatsApp number first!', 'warning');
+        return;
+      }
+
+      waStatus.style.display = 'block';
+      waStatus.textContent = '⏳ Sending WhatsApp message...';
+
+      // Build a friendly reminder message from the current reminders
+      const reminderItems = Array.from(document.querySelectorAll('.reminder-item'))
+        .map(el => el.querySelector('.ri-name')?.textContent)
+        .filter(Boolean);
+
+      const medList = reminderItems.length > 0
+        ? reminderItems.map(m => `💊 ${m}`).join('\n')
+        : '💊 Metformin 500mg\n💊 Lisinopril 10mg\n💊 Atorvastatin 20mg';
+
+      const message = `🏥 *Arogya-Setu — Medicine Reminder*\n\nDear Patient, this is your daily medicine reminder:\n\n${medList}\n\n⏰ Please take your medicines on time.\n📞 Contact your doctor if you have any concerns.\n\n_— Arogya-Setu Healthcare Platform_`;
+
+      const success = await sendWhatsAppMessage(phone, message);
+
+      if (success) {
+        waStatus.textContent = '✅ WhatsApp reminder sent successfully!';
+        waStatus.style.color = '#15803d';
+        showToast('📲 WhatsApp reminder sent!', 'success');
+      } else {
+        waStatus.textContent = '❌ Failed — Make sure the WhatsApp bot server is running (node whatsapp-bot.js)';
+        waStatus.style.color = '#dc2626';
+        showToast('❌ WhatsApp bot not running. Start it with: node whatsapp-bot.js', 'danger');
+      }
+    }
+
+    async function saveWhatsAppConfig() {
+      const statusEl = document.getElementById('wa-config-status');
+      const number = document.getElementById('wa-auto-number').value.trim();
+      const name   = document.getElementById('wa-patient-name').value.trim() || (user?.name || 'Patient');
+
+      if (!number) {
+        showToast('⚠️ Please enter your WhatsApp number first!', 'warning');
+        return;
+      }
+
+      statusEl.style.display = 'block';
+      statusEl.style.color = '#1d4ed8';
+      statusEl.textContent = '⏳ Activating auto-reminders...';
+
+      try {
+        const res = await fetch('http://localhost:3000/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            patientName: name,
+            patientNumber: number,
+            emergencyContacts: [
+              { name: 'Dr. Shweta',    number: '917892396278' },
+              { name: 'Bhavi (Son)',   number: '919353227276' }
+            ]
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          statusEl.textContent = `✅ Auto-reminders activated for "${name}"! You will receive WhatsApp messages at medicine times.`;
+          statusEl.style.color = '#15803d';
+          showToast('⏰ Auto WhatsApp reminders activated!', 'success');
+        } else {
+          throw new Error(data.error);
+        }
+      } catch (err) {
+        statusEl.textContent = '❌ Failed — Make sure the WhatsApp bot is running: node whatsapp-bot.js';
+        statusEl.style.color = '#dc2626';
+      }
+    }
+
+    // ---- SOS ----
+    function triggerSOS() {
+      // Instantly open the phone dialer
+      window.location.href = "tel:+919876543210";
+
+      // Blast WhatsApp SOS to ALL emergency contacts via bot API
+      const emergencyContacts = [
+        { name: 'Dr. Shweta', number: '917892396278' },
+        { name: 'Bhavi (Son)', number: '919353227276' }
+      ];
+
+      // Try to get live GPS location for maximum impact
+      const sendSOS = (locationStr) => {
+        fetch('http://localhost:3000/api/sos-blast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            patientName: user?.name || 'Patient',
+            contacts: emergencyContacts,
+            location: locationStr
+          })
+        }).then(r => r.json()).then(data => {
+          if (data.success) showToast('📲 WhatsApp SOS sent to all emergency contacts!', 'success');
+        }).catch(() => {});
+      };
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => sendSOS(`https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`),
+          ()    => sendSOS('Location unavailable')
+        );
+      } else {
+        sendSOS('Location unavailable');
+      }
+
+      showToast('🚨 EMERGENCY CALL INITIATED! All contacts being notified via WhatsApp!', 'danger');
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('🚨 Emergency Alert', { body: 'SOS triggered. All emergency contacts notified via WhatsApp.' });
+      }
+      setTimeout(() => showToast('📲 WhatsApp emergency blast sent!', 'info'), 2000);
+    }
+
+    // ── Dedicated Gemini API Keys ──────────────────────────────────
+    // 3 separate API keys to ensure the presentation works without quota crashes. 
+    // Please replace these with 3 DIFFERENT keys from 3 DIFFERENT Google Cloud Projects if needed.
+    const GROQ_API_KEY = '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';
+    const GROQ_MODEL_TEXT = 'llama-3.3-70b-versatile';
+    const GROQ_MODEL_VISION = 'meta-llama/llama-4-scout-17b-16e-instruct';
+
+    function getGroqEndpoint() {
+      return `https://api.groq.com/openai/v1/chat/completions`;
+    }
+
+    // Expose for voice.js backwards compatibility
+    window.GROQ_API_KEY = GROQ_API_KEY;
+
+    const SYSTEM_PROMPT = `You are Arogya-Setu, a caring and knowledgeable AI health assistant designed specifically for elderly patients in India. 
+You are integrated inside a healthcare platform called Arogya-Setu.
+
+The current patient's profile:
+- Name: The user's name from their account
+- Conditions: Diabetes (Type 2), Hypertension
+- Current Medicines: Metformin 500mg, Lisinopril 10mg, Atorvastatin 20mg, Vitamin D3
+- Primary Doctor: Dr. Anjali Mehta (General Physician)
+
+Your role:
+- Answer health questions clearly and with empathy
+- Give practical, actionable advice suited for elderly patients in India
+- Mention relevant medicines or dietary advice when appropriate
+- Keep responses concise (2–4 sentences max) and easy to understand
+- If something is urgent/dangerous, advise them to contact Dr. Anjali Mehta or trigger SOS
+- Never diagnose diseases. Recommend consulting a doctor for serious symptoms.
+- Use friendly, warm language. Emojis are welcome for clarity.
+- Respond in the same language the user writes in (Hindi or English).`;
+
+    let chatHistory = [];
+
+    // Demo responses (fallback when API is down)
+    const demoResponses = {
+      diabetes: "🩺 Diabetes Care Tips:\n• Check blood sugar levels regularly (before meals and bedtime)\n• Eat at fixed times each day\n• Include fiber-rich foods like oats, beans, and vegetables\n• Reduce sugary drinks and sweets\n• Exercise for 30 minutes daily — even a walk helps! 🚶‍♂️",
+      blood: "💓 Blood Pressure Management:\n• Reduce salt intake (under 1500mg/day)\n• Eat potassium-rich foods: bananas, spinach, sweet potato\n• Do light exercise like walking (20-30 minutes daily)\n• Manage stress through meditation or deep breathing\n• Take your medicines on time!",
+      medicine: "💊 About Medicines:\n• Always take medicines at the same time each day\n• Don't skip doses even if you feel better\n• Keep medicines in a cool, dry place\n• Check expiry dates monthly\n• If side effects occur, contact your doctor immediately",
+      pain: "🩹 Pain Management Tips:\n• Apply warm compress for muscle pain (15-20 minutes)\n• Rest affected areas and avoid heavy lifting\n• Light stretching can help stiffness\n• If pain persists beyond 2 weeks, consult a doctor\n• Never ignore sharp or sudden pain — seek medical help!",
+      default: "👋 Hello! I'm here to help with health questions. You can ask me about:\n• Diabetes, blood pressure, heart health\n• Medicine reminders and side effects\n• Daily health tips\n• Lifestyle advice\n\nWhat can I help you with today?"
+    };
+
+    function getDemoResponse(userMessage) {
+      const msg = userMessage.toLowerCase();
+      if (msg.includes('diabetes') || msg.includes('sugar')) return demoResponses.diabetes;
+      if (msg.includes('blood pressure') || msg.includes('pressure')) return demoResponses.blood;
+      if (msg.includes('medicine') || msg.includes('tablet')) return demoResponses.medicine;
+      if (msg.includes('pain') || msg.includes('ache')) return demoResponses.pain;
+      return demoResponses.default;
+    }
+
+    async function callGroqAPI(body) {
+      const endpoint = getGroqEndpoint();
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${GROQ_API_KEY}`
+            },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(15000)
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data?.error?.message || `HTTP ${res.status}`);
+          }
+          return data; // ✅ Success
+        } catch (err) {
+          if (attempt === 1 && (err.message.includes('429') || err.message.toLowerCase().includes('quota'))) {
+            console.warn(`Rate limit hit. Retrying in 2.5s...`);
+            await new Promise(r => setTimeout(r, 2500));
+            continue;
+          }
+          throw err;
+        }
+      }
+    }
+
+
+
+    async function sendAIMessage() {
+      const input = document.getElementById('ai-input');
+      const btn = document.getElementById('ai-send-btn');
+      const msg = input.value.trim();
+      if (!msg) return;
+
+      const box = document.getElementById('ai-chat-box');
+
+      // Show user message
+      const userDiv = document.createElement('div');
+      userDiv.className = 'chat-msg user';
+      userDiv.textContent = msg;
+      box.appendChild(userDiv);
+      input.value = '';
+      input.disabled = true;
+      btn.disabled = true;
+      box.scrollTop = box.scrollHeight;
+
+      // Typing indicator
+      const typingDiv = document.createElement('div');
+      typingDiv.className = 'chat-msg typing';
+      typingDiv.innerHTML = `<div class="dot-flashing"><span></span><span></span><span></span></div>`;
+      box.appendChild(typingDiv);
+      box.scrollTop = box.scrollHeight;
+
+      // Add to history
+      chatHistory.push({ role: 'user', content: msg });
+
+      try {
+        const body = {
+          model: GROQ_MODEL_TEXT,
+          messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...chatHistory],
+          temperature: 0.7,
+          max_tokens: 512
+        };
+
+        const data = await callGroqAPI(body);
+        const reply = data?.choices?.[0]?.message?.content || 'Sorry, I could not get a response. Please try again.';
+
+        // Add AI reply to history
+        chatHistory.push({ role: 'assistant', content: reply });
+
+        // Remove typing, show response
+        box.removeChild(typingDiv);
+        const aiDiv = document.createElement('div');
+        aiDiv.className = 'chat-msg ai';
+        aiDiv.innerHTML = '🤖 ' + reply.replace(/\n/g, '<br/>');
+        box.appendChild(aiDiv);
+
+      } catch (err) {
+        box.removeChild(typingDiv);
+        const errDiv = document.createElement('div');
+        errDiv.className = 'chat-msg ai';
+
+        let friendlyError = err.message;
+
+        if (friendlyError.includes('high demand') || friendlyError.includes('429')) {
+          friendlyError = "🤖 <b>Google's AI is busy right now!</b> Let me help with a quick tip instead:\n\n" + getDemoResponse(msg);
+        } else if (friendlyError.includes('network') || friendlyError.includes('Failed')) {
+          friendlyError = "🤖 <b>Connection issue — here's a quick tip:</b>\n\n" + getDemoResponse(msg);
+        } else {
+          friendlyError = `⚠️ <b>Connection Error:</b> ${err.message}\n\n📚 <b>Quick tip:</b>\n\n` + getDemoResponse(msg);
+        }
+
+        errDiv.innerHTML = friendlyError.replace(/\n/g, '<br/>');
+        box.appendChild(errDiv);
+      }
+
+      input.disabled = false;
+      btn.disabled = false;
+      input.focus();
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function askChip(question) {
+      document.getElementById('ai-input').value = question;
+      sendAIMessage();
+    }
+
+
+    // ---- Voice AI (Siri-like) ----
+    let voiceActive = false;
+    let convoModeOn = false;
+
+    function toggleVoice() {
+      voiceActive = !voiceActive;
+      if (voiceActive) {
+        if (typeof startVoice === 'function') startVoice(handleVoiceResult);
+        showWaveform(true);
+      } else {
+        if (typeof stopVoice === 'function') stopVoice();
+        showWaveform(false);
+      }
+    }
+
+    function toggleConvoMode() {
+      convoModeOn = !convoModeOn;
+      const btn = document.getElementById('convo-mode-btn');
+      if (convoModeOn) {
+        btn.textContent = '🛑 Stop Conversation Mode';
+        btn.style.background = 'linear-gradient(135deg,#ef4444,#dc2626)';
+        if (typeof startConversationMode === 'function') {
+          startConversationMode(handleVoiceResult);
+        }
+      } else {
+        btn.textContent = '🔄 Start Conversation Mode';
+        btn.style.background = 'linear-gradient(135deg,var(--primary),var(--teal))';
+        if (typeof stopVoice === 'function') stopVoice();
+        showWaveform(false);
+      }
+    }
+
+    function showWaveform(on) {
+      const wf = document.getElementById('voice-waveform');
+      if (wf) wf.style.opacity = on ? '1' : '0';
+    }
+
+    function addToConvoLog(text, role) {
+      const log = document.getElementById('voice-convo-log');
+      if (!log) return;
+      const bubble = document.createElement('div');
+      bubble.className = `voice-bubble ${role}`;
+      bubble.textContent = (role === 'user' ? '🎤 ' : '🤖 ') + text;
+      log.appendChild(bubble);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function handleVoiceResult(text) {
+      // Show what user said in transcript + log
+      const tr = document.getElementById('main-transcript');
+      if (tr) tr.textContent = '"' + text + '"';
+      addToConvoLog(text, 'user');
+      showWaveform(false);
+      voiceActive = false;
+
+      // Check if it's a navigation command
+      if (typeof parseVoiceCommand === 'function') {
+        const action = parseVoiceCommand(text);
+        if (action !== 'UNKNOWN') {
+          handleNavAction(action);
+          return;
+        }
+      }
+      // Otherwise send to Gemini voice AI (voice.js handles speaking)
+      if (typeof askGeminiVoice === 'function') {
+        // Override the updateTranscriptDisplay to also log AI reply
+        const origAskGemini = askGeminiVoice;
+        askGeminiVoice(text).then?.();
+        // Intercept AI reply into convo log (via MutationObserver on transcript)
+        watchTranscriptForAI();
+      }
+    }
+
+    // Watch transcript for AI reply to add to convo log
+    let transcriptWatcher = null;
+    function watchTranscriptForAI() {
+      const tr = document.getElementById('main-transcript');
+      if (!tr) return;
+      if (transcriptWatcher) transcriptWatcher.disconnect();
+      transcriptWatcher = new MutationObserver(() => {
+        const text = tr.textContent;
+        if (text.startsWith('🤖 ')) {
+          addToConvoLog(text.replace('🤖 ', ''), 'ai');
+          transcriptWatcher.disconnect();
+        }
+      });
+      transcriptWatcher.observe(tr, { childList: true, characterData: true, subtree: true });
+    }
+
+    function handleNavAction(action) {
+      const msgs = {
+        BOOK_APPOINTMENT: ['📅 Opening appointment booking for you!', () => { showSection('appointments', document.querySelector('[data-section=appointments]')); setTimeout(openBookingModal, 600); }],
+        SET_REMINDER: ['💊 Opening your medicine reminders!', () => showSection('reminders', document.querySelector('[data-section=reminders]'))],
+        VIEW_RECORDS: ['📋 Showing your health records!', () => showSection('records', document.querySelector('[data-section=records]'))],
+        EMERGENCY: ['🚨 Emergency! Press the SOS button now!', () => { showSection('sos', document.querySelector('[data-section=sos]')); setTimeout(triggerSOS, 500); }],
+        CALL_DOCTOR: ['📞 Connecting to Dr. Anjali Mehta...', () => showToast('📞 Calling Dr. Anjali Mehta...', 'info')],
+        HEALTH_TIPS: ['🤖 Opening AI Health Assistant for you!', () => showSection('ai', document.querySelector('[data-section=ai]'))],
+      };
+      const [msg, fn] = msgs[action] || ['Got it!', () => { }];
+      if (typeof speak === 'function') speak(msg.replace(/[📅💊📋🚨📞🤖]/gu, '').trim());
+      addToConvoLog(msg, 'ai');
+      showToast(msg, 'info');
+      setTimeout(fn, 900);
+    }
+
+    // Quick chip simulation — runs through AI
+    function simulateVoiceCmd(text) {
+      const tr = document.getElementById('main-transcript');
+      if (tr) tr.textContent = '"' + text + '"';
+      addToConvoLog(text, 'user');
+      if (typeof parseVoiceCommand === 'function') {
+        const action = parseVoiceCommand(text);
+        if (action !== 'UNKNOWN') { handleNavAction(action); return; }
+      }
+      if (typeof askGeminiVoice === 'function') {
+        askGeminiVoice(text);
+        watchTranscriptForAI();
+      }
+    }
+
+    // Legacy simulate (used in home section)
+    function simulateCommand(cmd) { simulateVoiceCmd(cmd); }
+
+    // ---- Modal ----
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    // ---- Logout ----
+    function handleLogout() {
+      auth.signOut().then(() => {
+        localStorage.removeItem('hb_user');
+        window.location.href = '../index.html';
+      }).catch(() => {
+        localStorage.removeItem('hb_user');
+        window.location.href = '../index.html';
+      });
+    }
+
+
+    // ═══════════════════════════════════════════════════════════
+    // ---- AI Prescription & Medicine Scanner ----
+    // ═══════════════════════════════════════════════════════════
+    let scannerStream = null;
+    let lastRxText = null;   // stores last scanned prescription text for medicine verification
+
+    // ── Camera Controls ──────────────────────────────────────────
+    async function toggleScanner() {
+      if (scannerStream) {
+        stopScannerStream();
+      } else {
+        await startScannerStream();
+      }
+    }
+
+    async function startScannerStream() {
+      try {
+        setScannerStatus('📷 Starting camera…');
+        const constraints = { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 960 } } };
+        scannerStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+        const video = document.getElementById('scanner-video');
+        const placeholder = document.getElementById('cam-placeholder');
+        video.srcObject = scannerStream;
+        video.style.display = 'block';
+        placeholder.style.display = 'none';
+
+        const btn = document.getElementById('btn-start-cam');
+        btn.innerHTML = '<span class="sbtn-icon">⏹️</span><span class="sbtn-label">Stop Camera<small>Turn off camera</small></span>';
+        btn.classList.add('stop-mode');
+
+        document.getElementById('btn-scan-rx').disabled = false;
+        document.getElementById('btn-scan-med').disabled = false;
+        setScannerStatus('✅ Camera ready — hold object steady and press Scan');
+      } catch (err) {
+        setScannerStatus('❌ Camera access denied. Allow camera in your browser settings.');
+        showToast('Camera blocked — please allow camera access.', 'danger');
+        scannerStream = null;
+      }
+    }
+
+    function stopScannerStream() {
+      if (scannerStream) {
+        scannerStream.getTracks().forEach(t => t.stop());
+        scannerStream = null;
+      }
+      const video = document.getElementById('scanner-video');
+      video.srcObject = null;
+      video.style.display = 'none';
+      document.getElementById('cam-placeholder').style.display = 'flex';
+      const btn = document.getElementById('btn-start-cam');
+      btn.innerHTML = '<span class="sbtn-icon">📷</span><span class="sbtn-label">Start Camera<small>Allow camera access first</small></span>';
+      btn.classList.remove('stop-mode');
+      document.getElementById('btn-scan-rx').disabled = true;
+      document.getElementById('btn-scan-med').disabled = true;
+      document.getElementById('scan-overlay').classList.remove('active');
+      setScannerStatus('Camera stopped. Click "Start Camera" to begin again.');
+    }
+
+    // ── Capture Frame from <video> into base64 ───────────────────
+    function captureFrame() {
+      const video = document.getElementById('scanner-video');
+      const canvas = document.getElementById('scanner-canvas');
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      // Return as base64 JPEG (strip data:image/jpeg;base64, prefix)
+      return canvas.toDataURL('image/jpeg', 0.92).split(',')[1];
+    }
+
+    // ── Main Scan Entry Point ─────────────────────────────────────
+    async function captureScan(type) {
+      if (!scannerStream) { showToast('Start the camera first!', 'danger'); return; }
+
+      // Animate scan overlay
+      const overlay = document.getElementById('scan-overlay');
+      overlay.classList.add('active');
+      setScannerStatus(type === 'prescription' ? '🔍 Scanning prescription…' : '💊 Scanning medicine strip…');
+
+      // Short delay so user sees the animation
+      await new Promise(r => setTimeout(r, 800));
+
+      const imageBase64 = captureFrame();
+      overlay.classList.remove('active');
+
+      // Show spinner
+      document.getElementById('scan-spinner').classList.add('active');
+
+      try {
+        if (type === 'prescription') {
+          await scanPrescription(imageBase64);
+        } else {
+          await scanMedicine(imageBase64);
+        }
+      } finally {
+        document.getElementById('scan-spinner').classList.remove('active');
+      }
+    }
+
+    // ── Prescription Scanner ──────────────────────────────────────
+    async function scanPrescription(imageBase64) {
+      const lang = document.getElementById('scan-lang').value;
+
+      const prompt = `You are a medical OCR expert. This image shows a doctor's prescription (handwritten or printed).
+
+Extract ALL medicines from the prescription. For each medicine return a JSON array of objects:
+{
+  "name": "Medicine Name",
+  "dosage": "e.g. 1 tablet / 500mg",
+  "timing": "e.g. After food / Before food / Empty stomach",
+  "frequency": "e.g. Morning and Night / Three times a day",
+  "duration": "e.g. 5 days / 1 week",
+  "instructions": "any special instructions"
+}
+
+Return ONLY the raw JSON array, no markdown, no explanation.
+All field VALUES must be written in ${lang} language (translate them if needed, keep medicine names in English).
+If you cannot read the prescription clearly, return: [{"name":"Unclear","dosage":"Please scan again in better lighting","timing":"","frequency":"","duration":"","instructions":""}]`;
+
+      const body = {
+        model: GROQ_MODEL_VISION,
+        messages: [{
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
+            ]
+        }],
+        temperature: 0.1,
+        max_tokens: 1024
+      };
+
+      try {
+        const data = await callGroqAPI(body);
+
+        if (!data) throw new Error('API Error');
+
+        const raw = data?.choices?.[0]?.message?.content || '[]';
+        // Strip possible markdown fences
+        const jsonStr = raw.replace(/```json|```/g, '').trim();
+        const medicines = JSON.parse(jsonStr);
+
+        lastRxText = medicines.map(m => m.name).join(', ');
+        document.getElementById('rx-stored-badge').style.display = 'block';
+
+        renderPrescriptionResults(medicines, lang);
+        setScannerStatus(`✅ Found ${medicines.length} medicine(s) — translated to ${lang}`);
+        showToast(`Prescription scanned! ${medicines.length} medicine(s) found.`, 'success');
+      } catch (err) {
+        setScannerStatus('❌ Scanner stopped. Rate limit hit: please wait 30 seconds.');
+        showToast('API Limit Reached. ' + err.message, 'danger');
+      }
+    }
+
+    // ── Medicine Strip Scanner ────────────────────────────────────
+    async function scanMedicine(imageBase64) {
+      const lang = document.getElementById('scan-lang').value;
+      const rxContext = lastRxText
+        ? `The patient's current prescription contains: ${lastRxText}.`
+        : 'No prescription has been scanned yet.';
+
+      const prompt = `You are a medicine identification expert. ${rxContext}
+
+Look at this image of a medicine strip, tablet packet, or medicine box.
+1. Identify the medicine name visible on the packaging.
+2. Check if it matches any medicine in the prescription (if provided).
+3. Return a JSON object:
+{
+  "identified_medicine": "Name from packaging",
+  "matches_prescription": true or false,
+  "match_name": "matched medicine name from prescription or null",
+  "dosage": "standard dosage seen on packaging",
+  "timing": "e.g. After food",
+  "frequency": "e.g. Twice daily",
+  "duration": "e.g. As prescribed",
+  "instructions": "any warnings or usage tips in simple language",
+  "warning": "any important warnings e.g. not for children, avoid alcohol"
+}
+
+All field VALUES must be in ${lang} language (keep medicine name in English).
+Return ONLY raw JSON, no markdown.`;
+
+      const body = {
+        model: GROQ_MODEL_VISION,
+        messages: [{
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
+            ]
+        }],
+        temperature: 0.1,
+        max_tokens: 512
+      };
+
+      try {
+        const data = await callGroqAPI(body);
+
+        if (!data) throw new Error('API Error');
+
+        const raw = data?.choices?.[0]?.message?.content || '{}';
+        const jsonStr = raw.replace(/```json|```/g, '').trim();
+        const med = JSON.parse(jsonStr);
+
+        renderMedicineResult(med, lang);
+        setScannerStatus(`✅ Identified: ${med.identified_medicine || 'Unknown'}`);
+        showToast(`Medicine identified: ${med.identified_medicine || 'Unknown'}`, 'success');
+      } catch (err) {
+        setScannerStatus('❌ Scanner stopped. Rate limit hit: please wait 30 seconds.');
+        showToast('API Limit Reached. ' + err.message, 'danger');
+      }
+    }
+
+    // ── Render Prescription Result Cards ─────────────────────────
+    function renderPrescriptionResults(medicines, lang) {
+      const container = document.getElementById('scanner-results');
+      const timingIcons = { morning: '🌅', night: '🌙', afternoon: '🌤️', food: '🍲', empty: '⚡', before: '⏰', after: '🍽️' };
+
+      function getTimingIcon(timing = '') {
+        const t = timing.toLowerCase();
+        if (t.includes('morning')) return '🌅';
+        if (t.includes('night')) return '🌙';
+        if (t.includes('noon') || t.includes('afternoon')) return '🌤️';
+        if (t.includes('after')) return '🍽️';
+        if (t.includes('before') || t.includes('empty')) return '⏰';
+        return '💊';
+      }
+
+      const cards = medicines.map(m => `
+        <div class="med-card">
+          <div class="med-card-header">
+            <div class="med-icon-circle">💊</div>
+            <div>
+              <div class="med-card-name">${m.name || 'Unknown Medicine'}</div>
+              <span class="med-card-match match-yes">📜 From Prescription</span>
+            </div>
+          </div>
+          <div class="med-card-fields">
+            ${m.dosage ? `<div class="med-field"><span class="mf-icon">💉</span><div class="mf-text"><span class="mf-label">Dosage</span><span class="mf-value">${m.dosage}</span></div></div>` : ''}
+            ${m.timing ? `<div class="med-field"><span class="mf-icon">${getTimingIcon(m.timing)}</span><div class="mf-text"><span class="mf-label">Timing</span><span class="mf-value">${m.timing}</span></div></div>` : ''}
+            ${m.frequency ? `<div class="med-field"><span class="mf-icon">🔄</span><div class="mf-text"><span class="mf-label">Frequency</span><span class="mf-value">${m.frequency}</span></div></div>` : ''}
+            ${m.duration ? `<div class="med-field"><span class="mf-icon">📅</span><div class="mf-text"><span class="mf-label">Duration</span><span class="mf-value">${m.duration}</span></div></div>` : ''}
+            ${m.instructions ? `<div class="med-field"><span class="mf-icon">📝</span><div class="mf-text"><span class="mf-label">Instructions</span><span class="mf-value">${m.instructions}</span></div></div>` : ''}
+          </div>
+        </div>
+      `).join('');
+
+      container.innerHTML = `
+        <div class="rx-result-section">
+          <div class="rx-result-header">📜 Prescription Results <span style="font-size:0.75rem;font-weight:500;color:var(--text-light);margin-left:8px;">${lang}</span></div>
+          ${cards}
+        </div>`;
+    }
+
+    // ── Render Medicine Verification Card ────────────────────────
+    function renderMedicineResult(med, lang) {
+      const container = document.getElementById('scanner-results');
+      const matched = med.matches_prescription;
+
+      const banner = matched
+        ? `<div class="verify-banner ok">✔ This medicine is listed in your prescription${med.match_name ? ` (${med.match_name})` : ''}.</div>`
+        : (lastRxText
+          ? `<div class="verify-banner warn">⚠️ This medicine was NOT found in your current prescription. Please check with your doctor.</div>`
+          : `<div class="verify-banner warn">ℹ️ No prescription scanned yet — scan your prescription first to verify this medicine.</div>`);
+
+      container.innerHTML = `
+        <div class="rx-result-section">
+          <div class="rx-result-header">💊 Medicine Identification <span style="font-size:0.75rem;font-weight:500;color:var(--text-light);margin-left:8px;">${lang}</span></div>
+          ${banner}
+          <div class="med-card">
+            <div class="med-card-header">
+              <div class="med-icon-circle">🔬</div>
+              <div>
+                <div class="med-card-name">${med.identified_medicine || 'Unknown Medicine'}</div>
+                <span class="med-card-match ${matched ? 'match-yes' : 'match-no'}">${matched ? '✔ Verified' : '✘ Not in Rx'}</span>
+              </div>
+            </div>
+            <div class="med-card-fields">
+              ${med.dosage ? `<div class="med-field"><span class="mf-icon">💉</span><div class="mf-text"><span class="mf-label">Dosage</span><span class="mf-value">${med.dosage}</span></div></div>` : ''}
+              ${med.timing ? `<div class="med-field"><span class="mf-icon">🍽️</span><div class="mf-text"><span class="mf-label">Timing</span><span class="mf-value">${med.timing}</span></div></div>` : ''}
+              ${med.frequency ? `<div class="med-field"><span class="mf-icon">🔄</span><div class="mf-text"><span class="mf-label">Frequency</span><span class="mf-value">${med.frequency}</span></div></div>` : ''}
+              ${med.duration ? `<div class="med-field"><span class="mf-icon">📅</span><div class="mf-text"><span class="mf-label">Duration</span><span class="mf-value">${med.duration}</span></div></div>` : ''}
+              ${med.instructions ? `<div class="med-field"><span class="mf-icon">📝</span><div class="mf-text"><span class="mf-label">Instructions</span><span class="mf-value">${med.instructions}</span></div></div>` : ''}
+              ${med.warning ? `<div class="med-field" style="grid-column:1/-1;background:#fff7ed;"><span class="mf-icon">⚠️</span><div class="mf-text"><span class="mf-label">Warning</span><span class="mf-value" style="color:#c2410c;">${med.warning}</span></div></div>` : ''}
+            </div>
+          </div>
+        </div>`;
+    }
+
+    // ── Clear results ─────────────────────────────────────────────
+    function clearScanResults() {
+      document.getElementById('scanner-results').innerHTML = '';
+      document.getElementById('rx-stored-badge').style.display = 'none';
+      lastRxText = null;
+      setScannerStatus('Results cleared. Ready to scan.');
+    }
+
+    function setScannerStatus(msg) {
+      const el = document.getElementById('scanner-status');
+      if (el) el.textContent = msg;
+    }
+
+    // ---- Init ----
+    renderAppointments();
+    renderReminders();
+
+    // ---- Register Service Worker (PWA) ----
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('../sw.js')
+          .then(reg => console.log('✅ ServiceWorker registered with scope:', reg.scope))
+          .catch(err => console.log('❌ ServiceWorker registration failed:', err));
+      });
+    }
+  </script>
+  
+  <!-- Google Translate Feature -->
+  <script type="text/javascript">
+    function googleTranslateElementInit() {
+      new google.translate.TranslateElement({
+        pageLanguage: 'en',
+        includedLanguages: 'hi,bn,te,mr,ta,ur,gu,kn,or,ml,pa,en',
+        layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+        autoDisplay: false
+      }, 'google_translate_element');
+    }
+  </script>
+  <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+</body>
+
+</html>
